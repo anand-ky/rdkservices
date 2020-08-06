@@ -33,7 +33,7 @@ using namespace std;
 bool Utils::IARM::init()
 {
     static IARMHelper sIARMHelper;
-    return true;
+    return m_connected;
 }
 
 Utils::IARM::IARMHelper::IARMHelper()
@@ -50,6 +50,7 @@ Utils::IARM::IARMHelper::IARMHelper()
     {
         LOGINFO("%s has already connected with IARM", memberName.c_str());
         m_connected = true;
+        return;
     }
 
     IARM_CHECK( IARM_Bus_Init(memberName.c_str()));
@@ -60,11 +61,13 @@ Utils::IARM::IARMHelper::IARMHelper()
         {
             LOGERR("IARM_Bus_Connect failure");
             IARM_CHECK(IARM_Bus_Term());
+            return;
         }
     }
     else
     {
         LOGERR("IARM_Bus_Init failure");
+        return;
     }
 
     LOGINFO("%s inited and connected with IARM", memberName.c_str());
