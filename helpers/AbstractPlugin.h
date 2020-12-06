@@ -62,8 +62,8 @@ namespace WPEFramework {
                 for(uint8_t ver = 1; ver <= m_currVersion; ver++)  
                 {
                     auto handler = m_versionHandlers.find(ver);
-                    if(handler != versions.end())
-                        handler.Register(methodName, method, objectPtr);
+                    if(handler != m_versionHandlers.end())
+                        handler->second.Register(methodName, method, objectPtr);
                 }
             }
 
@@ -74,8 +74,8 @@ namespace WPEFramework {
                 for(auto ver : versions)
                 {
                     auto handler = m_versionHandlers.find(ver);
-                    if(handler != versions.end())
-                        handler.Register(methodName, method, objectPtr);
+                    if(handler != m_versionHandlers.end())
+                        handler->second.Register(methodName, method, objectPtr);
                 } 
             }
 
@@ -86,7 +86,7 @@ namespace WPEFramework {
 
                 // For default constructor assume that only version 1 is supported.
                 // Also version 1 handler would always be the current object.
-                m_versionHandlers[1] = (*this)();
+                m_versionHandlers[1] = *(GetHandler(1));
 
                 registerMethod("getQuirks", &AbstractPlugin::getQuirks, this);
             }
@@ -96,12 +96,12 @@ namespace WPEFramework {
                 LOGINFO();
 
                 // Create handlers for all the versions upto m_currVersion
-                m_versionHandlers[1] = (*this)();
+                m_versionHandlers[1] = *(GetHandler(1));
                 for(uint8_t i = 2; i <= m_currVersion; i++)
                 {
                     std::vector<uint8_t> vec;
                     vec.push_back(i);
-                    m_versionHandlers[i] = CreateHandler(vec);
+                    m_versionHandlers.emplace(std::make_pair(i,CreateHandler(vec)));
                 }
 
                 registerMethod("getQuirks", &AbstractPlugin::getQuirks, this);
