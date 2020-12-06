@@ -63,7 +63,7 @@ namespace WPEFramework {
                 {
                     auto handler = m_versionHandlers.find(ver);
                     if(handler != m_versionHandlers.end())
-                        handler->second->Register(methodName, method, objectPtr);
+                        handler->second->Register<WPEFramework::Core::JSON::VariantContainer, WPEFramework::Core::JSON::VariantContainer, METHOD, REALOBJECT>(methodName, method, objectPtr);
                 }
             }
 
@@ -75,7 +75,7 @@ namespace WPEFramework {
                 {
                     auto handler = m_versionHandlers.find(ver);
                     if(handler != m_versionHandlers.end())
-                        handler->second->Register(methodName, method, objectPtr);
+                        handler->second->Register<WPEFramework::Core::JSON::VariantContainer, WPEFramework::Core::JSON::VariantContainer, METHOD, REALOBJECT>(methodName, method, objectPtr);
                 } 
             }
 
