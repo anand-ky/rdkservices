@@ -63,7 +63,7 @@ namespace WPEFramework {
                 {
                     auto handler = m_versionHandlers.find(ver);
                     if(handler != m_versionHandlers.end())
-                        handler->second.Register(methodName, method, objectPtr);
+                        handler->second->Register(methodName, method, objectPtr);
                 }
             }
 
@@ -75,7 +75,7 @@ namespace WPEFramework {
                 {
                     auto handler = m_versionHandlers.find(ver);
                     if(handler != m_versionHandlers.end())
-                        handler->second.Register(methodName, method, objectPtr);
+                        handler->second->Register(methodName, method, objectPtr);
                 } 
             }
 
@@ -86,7 +86,7 @@ namespace WPEFramework {
 
                 // For default constructor assume that only version 1 is supported.
                 // Also version 1 handler would always be the current object.
-                m_versionHandlers[1] = *(GetHandler(1));
+                m_versionHandlers[1] = GetHandler(1);
 
                 registerMethod("getQuirks", &AbstractPlugin::getQuirks, this);
             }
@@ -96,12 +96,13 @@ namespace WPEFramework {
                 LOGINFO();
 
                 // Create handlers for all the versions upto m_currVersion
-                m_versionHandlers[1] = *(GetHandler(1));
+                m_versionHandlers[1] = GetHandler(1);
                 for(uint8_t i = 2; i <= m_currVersion; i++)
                 {
                     std::vector<uint8_t> vec;
                     vec.push_back(i);
-                    m_versionHandlers.emplace(std::make_pair(i,CreateHandler(vec)));
+                    CreateHandler(vec);
+                    m_versionHandlers[i] = GetHandler(i);
                 }
 
                 registerMethod("getQuirks", &AbstractPlugin::getQuirks, this);
@@ -137,7 +138,7 @@ namespace WPEFramework {
                 return(string());
             }
         private:
-            std::unordered_map<uint8_t, WPEFramework::Core::JSONRPC::Handler&> m_versionHandlers;
+            std::unordered_map<uint8_t, WPEFramework::Core::JSONRPC::Handler*> m_versionHandlers;
             uint8_t m_currVersion; // current supported version
         };
 	} // namespace Plugin
