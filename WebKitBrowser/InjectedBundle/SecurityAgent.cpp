@@ -47,10 +47,14 @@ namespace JavaScript {
 
                     std::string url = WebKit::Utils::GetURL();
 
+                    TRACE_GLOBAL(Trace::Error, (_T("GetToken Url retrieved from injected bundle %s"),url.c_str()));
+
                     std::string tokenAsString;
                     if (url.length() < sizeof(buffer)) {
                         ::memset (buffer, 0, sizeof(buffer));
                         ::memcpy (buffer, url.c_str(), url.length());
+
+                        TRACE_GLOBAL(Trace::Error, (_T("before call to GetToken %s"),url.c_str()));
 
                         int length = GetToken(static_cast<uint16_t>(sizeof(buffer)), url.length(), buffer);
                         if (length > 0) {
