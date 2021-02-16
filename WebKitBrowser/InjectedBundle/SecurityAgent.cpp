@@ -38,6 +38,9 @@ namespace JavaScript {
                 JSObjectRef, size_t argumentCount, const JSValueRef arguments[], JSValueRef*) {
                 JSValueRef result;
 
+                fprintf(stderr,"HandleMessage GetToken\n");
+
+
                 if (argumentCount != 0) {
                     TRACE_GLOBAL(Trace::Information, (_T("The Token Javascript command, does not take any paramaters!!!")));
                     result = JSValueMakeNull(context);
@@ -47,19 +50,22 @@ namespace JavaScript {
 
                     std::string url = WebKit::Utils::GetURL();
 
-                    TRACE_GLOBAL(Trace::Error, (_T("GetToken Url retrieved from injected bundle %s"),url.c_str()));
+                    fprintf(stderr, "GetToken Url retrieved from injected bundle %s\n",url.c_str());
 
                     std::string tokenAsString;
                     if (url.length() < sizeof(buffer)) {
                         ::memset (buffer, 0, sizeof(buffer));
                         ::memcpy (buffer, url.c_str(), url.length());
 
-                        TRACE_GLOBAL(Trace::Error, (_T("before call to GetToken %s"),url.c_str()));
+                        fprintf(stderr,"before call to GetToken %s\n",url.c_str());
 
                         int length = GetToken(static_cast<uint16_t>(sizeof(buffer)), url.length(), buffer);
                         if (length > 0) {
                            tokenAsString = std::string(reinterpret_cast<const char*>(buffer), length);
                         }
+
+                        fprintf(stderr,"after call to GetToken %s\n",tokenAsString.c_str());
+
                     }
 
                     JSStringRef returnMessage = JSStringCreateWithUTF8CString(tokenAsString.c_str());
