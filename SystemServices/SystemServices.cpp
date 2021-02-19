@@ -241,7 +241,6 @@ namespace WPEFramework {
         SERVICE_REGISTRATION(SystemServices, SYSSRV_MAJOR_VERSION,
                 SYSSRV_MINOR_VERSION);
 
-        SystemServices* SystemServices::_instance = nullptr;
         cSettings SystemServices::m_temp_settings(SYSTEM_SERVICE_TEMP_FILE);
 
         /**
@@ -251,8 +250,6 @@ namespace WPEFramework {
             : AbstractPlugin(2)
               , m_cacheService(SYSTEM_SERVICE_SETTINGS_FILE)
         {
-            SystemServices::_instance = this;
-
             //Initialise timer with interval and callback function.
             m_operatingModeTimer.setInterval(updateDuration, MODE_TIMER_UPDATE_INTERVAL);
 
@@ -368,13 +365,27 @@ namespace WPEFramework {
 
         SystemServices::~SystemServices()
         {
-            if (thread_getMacAddresses.joinable())
-                thread_getMacAddresses.join();
+            try
+            {
+                if (thread_getMacAddresses.joinable())
+                {
+                    LOGDBG("Before joining thread_getMacAddresses\n");
+                    thread_getMacAddresses.join();
+                    LOGDBG("After joining thread_getMacAddresses\n");
 
-            if( m_getFirmwareInfoThread.joinable())
-                m_getFirmwareInfoThread.join();
-                
-            SystemServices::_instance = nullptr;
+                }
+
+                if( m_getFirmwareInfoThread.joinable())
+                {
+                    LOGDBG("Before joining m_getFirmwareInfoThread\n");
+                    m_getFirmwareInfoThread.join();
+                    LOGDBG("After joining m_getFirmwareInfoThread\n");
+                }
+            }
+            catch(const std::exception& e)
+            {
+                LOGDBG("exception in systemservices destructor %s", e.what());
+            }
         }
 
         const string SystemServices::Initialize(PluginHost::IShell*)
@@ -503,7 +514,7 @@ namespace WPEFramework {
 
                 /* Trigger rebootRequest event if IARMCALL is success. */
                 if (IARM_RESULT_SUCCESS == iarmcallstatus) {
-                    SystemServices::_instance->onRebootRequest(customReason);
+                    onRebootRequest(customReason);
                 } else {
                     LOGERR("iarmcallstatus = %d; onRebootRequest event will not be fired.\n",
                             iarmcallstatus);
@@ -863,11 +874,7 @@ namespace WPEFramework {
                 param["mode"] = "NORMAL";
                 param["duration"] = 0;
                 parameters["modeInfo"] = param;
-                if (_instance) {
-                    _instance->setMode(parameters,response);
-                } else {
-                    LOGERR("_instance is NULL.\n");
-                }
+                setMode(parameters,response);
             }
 
             //set values in temp file so they can be restored in receiver restarts / crashes
@@ -946,14 +953,9 @@ namespace WPEFramework {
         {
             string env = "";
             string model;
-            string firmwareVersion;
             string eStbMac = "";
-            if (_instance) {
-                firmwareVersion = _instance->getStbVersionString();
-            } else {
-                LOGERR("_instance is NULL.\n");
-            }
-
+            string firmwareVersion = getStbVersionString();
+            
             LOGWARN("SystemService firmwareVersion %s\n", firmwareVersion.c_str());
 
             if (true == findCaseInsensitive(firmwareVersion, "DEV"))
@@ -994,10 +996,7 @@ namespace WPEFramework {
                 {
                     // empty /opt/swupdate.conf. Don't initiate FW download
                     LOGWARN("Empty /opt/swupdate.conf. Skipping FW upgrade check with xconf");
-                    if (_instance) {
-                        _instance->reportFirmwareUpdateInfoReceived("",
-                        STATUS_CODE_NO_SWUPDATE_CONF, true, "", response);
-                    }
+                    reportFirmwareUpdateInfoReceived("",STATUS_CODE_NO_SWUPDATE_CONF, true, "", response);
                     return;
                 }
             }
@@ -1086,12 +1085,9 @@ namespace WPEFramework {
                     _fwUpdate.success = true;
                 }
             }
-            if (_instance) {
-                _instance->reportFirmwareUpdateInfoReceived(_fwUpdate.firmwareUpdateVersion,
+            reportFirmwareUpdateInfoReceived(_fwUpdate.firmwareUpdateVersion,
                         _fwUpdate.httpStatus, _fwUpdate.success, firmwareVersion, response);
-            } else {
-                LOGERR("_instance is NULL.\n");
-            }
+            
         } //end of event onFirmwareInfoRecived
 
         /***
@@ -2654,14 +2650,11 @@ namespace WPEFramework {
 			reason = ((reason.length()) ? reason : "application");
 
 			if (state == "STANDBY") {
-				if (SystemServices::_instance) {
-					SystemServices::_instance->getPreferredStandbyMode(paramIn, paramOut);
-					/* TODO: parse abd get the sleepMode from paramOut */
-					sleepMode= paramOut["preferredStandbyMode"].String();
-					LOGWARN("Output of preferredStandbyMode: '%s'", sleepMode.c_str());
-				} else {
-					LOGWARN("SystemServices::_instance is NULL.\n");
-				}
+                getPreferredStandbyMode(paramIn, paramOut);
+                /* TODO: parse abd get the sleepMode from paramOut */
+                sleepMode= paramOut["preferredStandbyMode"].String();
+                LOGWARN("Output of preferredStandbyMode: '%s'", sleepMode.c_str());
+            
 				if (convert("DEEP_SLEEP", sleepMode)) {
 					retVal = CPowerState::instance()->setPowerState(sleepMode);
 				} else {
@@ -2981,11 +2974,7 @@ namespace WPEFramework {
                         LOGWARN("IARM Event triggered for PowerStateChange.\
                                 Old State %s, New State: %s\n",
                                 curState.c_str() , newState.c_str());
-                        if (SystemServices::_instance) {
-                            SystemServices::_instance->onSystemPowerStateChanged(newState);
-                        } else {
-                            LOGERR("SystemServices::_instance is NULL.\n");
-                        }
+                        onSystemPowerStateChanged(newState);
                     }
                     break;
             }
@@ -3004,11 +2993,7 @@ namespace WPEFramework {
             std::string mode = iarmModeToString(param->newMode);
 
 #ifdef HAS_API_POWERSTATE
-            if (SystemServices::_instance) {
-                SystemServices::_instance->onSystemModeChanged(mode);
-            } else {
-                LOGERR("SystemServices::_instance is NULL.\n");
-            }
+            onSystemModeChanged(mode);
 #else
             LOGINFO("HAS_API_POWERSTATE is not defined.\n");
 #endif /* HAS_API_POWERSTATE */
@@ -3037,11 +3022,7 @@ namespace WPEFramework {
                 case IARM_BUS_SYSMGR_SYSSTATE_FIRMWARE_UPDATE_STATE:
                     {
                         LOGWARN("IARMEvt: IARM_BUS_SYSMGR_SYSSTATE_FIRMWARE_UPDATE_STATE = '%d'\n", state);
-                        if (SystemServices::_instance) {
-                            SystemServices::_instance->onFirmwareUpdateStateChange(state);
-                        } else {
-                            LOGERR("SystemServices::_instance is NULL.\n");
-                        }
+                        onFirmwareUpdateStateChange(state);
                     } break;
 
                 case IARM_BUS_SYSMGR_SYSSTATE_TIME_SOURCE:
@@ -3049,11 +3030,7 @@ namespace WPEFramework {
                         if (sysEventData->data.systemStates.state)
                         {
                             LOGWARN("Clock is set.");
-                            if (SystemServices::_instance) {
-                                SystemServices::_instance->onClockSet();
-                            } else {
-                                LOGERR("SystemServices::_instance is NULL.\n");
-                            }
+                            onClockSet();
                         }
                     } break;
 
@@ -3157,12 +3134,8 @@ namespace WPEFramework {
             }
             if (validparams) {
                 LOGWARN("Invalid temperature levels \n");
-                if (SystemServices::_instance) {
-                    SystemServices::_instance->onTemperatureThresholdChanged(thermLevel,
+                onTemperatureThresholdChanged(thermLevel,
                             crossOver, param->data.therm.curTemperature);
-                } else {
-                    LOGERR("SystemServices::_instance is NULL.\n");
-                }
             }
         }
 #endif /* ENABLE_THERMAL_PROTECTION */

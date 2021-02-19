@@ -91,7 +91,6 @@ namespace WPEFramework {
                 static IARM_Bus_SYSMgr_GetSystemStates_Param_t paramGetSysState;
 #endif /* defined(USE_IARMBUS) || defined(USE_IARM_BUS) */
                 std::thread thread_getMacAddresses;
-                SystemServices* m_systemService;
                 /* TODO: Need to decide whether needed or not since setProperty
                    and getProperty functionalities are XRE/RTRemote dependent. */
                 static JsonObject _systemParams;
@@ -118,7 +117,6 @@ namespace WPEFramework {
                 SystemServices();
                 virtual ~SystemServices();
 
-                static SystemServices* _instance;
                 virtual const string Initialize(PluginHost::IShell* service) override;
                 virtual void Deinitialize(PluginHost::IShell* service) override;
                 static int runScript(const std::string& script,
